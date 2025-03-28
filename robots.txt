@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://bounce.nikhilmishra.live/sitemap.xml

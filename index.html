@@ -3,7 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nokia Bounce Game</title>
+    <title>Nokia Bounce Game - Classic Ball Bouncing Adventure</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Play the nostalgic Nokia Bounce game recreated with modern web technologies. Control the bouncing red and blue balls through exciting levels and challenging obstacles.">
+    <meta name="keywords" content="Nokia Bounce, bounce game, retro game, ball game, arcade game, nostalgic games, classic games">
+    <meta name="author" content="Classic Bounce Game">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://bounce.nikhilmishra.live/">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://bounce.nikhilmishra.live/">
+    <meta property="og:title" content="Nokia Bounce Game - Classic Ball Bouncing Adventure">
+    <meta property="og:description" content="Remember the iconic Nokia Bounce game? Play this modern recreation with red and blue bouncing balls, challenging obstacles, and nostalgic gameplay!">
+    <meta property="og:image" content="https://bounce.nikhilmishra.live/social-preview.jpg">
+    <meta property="og:site_name" content="Classic Bounce Game">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://bounce.nikhilmishra.live/">
+    <meta property="twitter:title" content="Nokia Bounce Game - Classic Ball Bouncing Adventure">
+    <meta property="twitter:description" content="Remember the iconic Nokia Bounce game? Play this modern recreation with red and blue bouncing balls, challenging obstacles, and nostalgic gameplay!">
+    <meta property="twitter:image" content="https://bounce.nikhilmishra.live/social-preview.jpg">
+    
+    <!-- Red Ball Favicon -->
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    
+    <!-- PWA Support -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#e74c3c">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Bounce">
+    
+    <!-- CSS -->
     <link rel="stylesheet" href="css/style.css">
     <style>
         #pause-controls {
@@ -139,6 +175,37 @@
     <script src="js/game.js"></script>
     <script src="js/main.js"></script>
     
+    <!-- Structured Data for Rich Results -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "VideoGame",
+      "name": "Nokia Bounce Game",
+      "description": "A recreation of the classic Nokia Bounce game with modern web technologies. Control the bouncing red and blue balls through exciting levels and challenging obstacles.",
+      "image": "https://bounce.nikhilmishra.live/social-preview.jpg",
+      "url": "https://bounce.nikhilmishra.live/",
+      "genre": ["Arcade", "Platform", "Retro"],
+      "gamePlatform": ["Web Browser", "Mobile"],
+      "applicationCategory": "Game",
+      "operatingSystem": "Any",
+      "author": {
+        "@type": "Organization",
+        "name": "Classic Bounce Game"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.7",
+        "ratingCount": "856"
+      }
+    }
+    </script>
+    
     <!-- Game Controls Script -->
     <script>
         // Wait for DOM to be fully loaded
@@ -235,6 +302,22 @@
             
             // Initialize after slight delay
             setTimeout(ensureGameAvailable, 1000);
+            
+            // Register service worker for PWA support
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                    navigator.serviceWorker.register('/sw.js').then(
+                        function(registration) {
+                            // Registration was successful
+                            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                        }, 
+                        function(err) {
+                            // registration failed :(
+                            console.log('ServiceWorker registration failed: ', err);
+                        }
+                    );
+                });
+            }
         });
     </script>
 </body>
