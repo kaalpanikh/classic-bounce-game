@@ -65,31 +65,6 @@
             margin-top: 20px;
         }
         
-        /* Mobile Control Buttons */
-        #mobile-controls {
-            position: fixed;
-            bottom: 20px;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            z-index: 9990;
-            padding: 0 20px;
-        }
-        
-        .control-btn {
-            width: 60px;
-            height: 60px;
-            background-color: rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-            border: 2px solid rgba(255, 255, 255, 0.8);
-        }
-        
         /* Game over screen styling */
         #game-over-screen .game-over-content {
             background-color: rgba(0, 0, 0, 0.85);
@@ -148,19 +123,6 @@
         <button id="resume-btn">RESUME</button>
     </div>
     
-    <!-- Mobile Controls -->
-    <div id="mobile-controls">
-        <div class="control-btn" id="left-btn">
-            <span style="color:white; font-size:24px;">←</span>
-        </div>
-        <div class="control-btn" id="up-btn">
-            <span style="color:white; font-size:24px;">↑</span>
-        </div>
-        <div class="control-btn" id="right-btn">
-            <span style="color:white; font-size:24px;">→</span>
-        </div>
-    </div>
-    
     <!-- Pause Overlay -->
     <div id="pause-overlay">
         <h2>Game Paused</h2>
@@ -188,11 +150,6 @@
             const pauseOverlay = document.getElementById('pause-overlay');
             const restartButton = document.getElementById('restart-button');
             const gameOverScreen = document.getElementById('game-over-screen');
-            
-            // Mobile control buttons
-            const leftBtn = document.getElementById('left-btn');
-            const rightBtn = document.getElementById('right-btn');
-            const upBtn = document.getElementById('up-btn');
             
             // Set initial game state
             let gameInstance = null;
@@ -255,40 +212,6 @@
                 console.log('Play Again button clicked');
                 restartGame();
             });
-            
-            // Mobile control button handlers
-            function handleButtonPress(btn, direction) {
-                btn.addEventListener('touchstart', function(e) {
-                    e.preventDefault(); // Prevent scrolling
-                    if (ensureGameAvailable() && gameInstance.ball) {
-                        gameInstance.keyState[direction] = true;
-                    }
-                });
-                
-                btn.addEventListener('touchend', function(e) {
-                    e.preventDefault();
-                    if (ensureGameAvailable() && gameInstance.ball) {
-                        gameInstance.keyState[direction] = false;
-                    }
-                });
-                
-                // Also support mouse events for testing on desktop
-                btn.addEventListener('mousedown', function() {
-                    if (ensureGameAvailable() && gameInstance.ball) {
-                        gameInstance.keyState[direction] = true;
-                    }
-                });
-                
-                btn.addEventListener('mouseup', function() {
-                    if (ensureGameAvailable() && gameInstance.ball) {
-                        gameInstance.keyState[direction] = false;
-                    }
-                });
-            }
-            
-            handleButtonPress(leftBtn, 'left');
-            handleButtonPress(rightBtn, 'right');
-            handleButtonPress(upBtn, 'up');
             
             // Add Enter key support for "Play Again" button
             document.addEventListener('keydown', function(event) {
