@@ -171,20 +171,23 @@ class Physics {
     }
     
     /**
-     * Update physics simulation
-     * @param {number} deltaTime - Time since last update
+     * Update the physics world
+     * @param {number} deltaTime - Time since last update in seconds
      */
     update(deltaTime) {
-        // Step the physics world
-        this.world.step(this.timeStep, deltaTime, 3);
+        // Step the physics world with correct parameters
+        // Parameters: timeStep, deltaTime, maxSubSteps
+        this.world.step(1/60, deltaTime, 3);
         
-        // Update objects
-        for (const object of this.objectsToUpdate) {
-            // Update mesh position to match physics body
-            if (object.mesh && object.body) {
+        // Update all registered objects
+        this.objectsToUpdate.forEach(object => {
+            if (object.body && object.mesh) {
+                // Copy the body position to the mesh
                 object.mesh.position.copy(object.body.position);
+                
+                // Copy the body quaternion to the mesh
                 object.mesh.quaternion.copy(object.body.quaternion);
             }
-        }
+        });
     }
 }

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bounce Game Controls Debugger</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .debug-area {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        #key-log {
+            height: 150px;
+            overflow-y: auto;
+            background-color: #333;
+            color: #00ff00;
+            padding: 10px;
+            font-family: monospace;
+            margin-top: 10px;
+        }
+        .key-state {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        .key-box {
+            width: 60px;
+            height: 60px;
+            border: 2px solid #ddd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            background-color: #eee;
+        }
+        .active {
+            background-color: #00ff00;
+            border-color: #00cc00;
+        }
+        .ball {
+            width: 50px;
+            height: 50px;
+            background-color: red;
+            border-radius: 50%;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .playground {
+            width: 80%;
+            height: 200px;
+            margin: 30px auto;
+            position: relative;
+            border: 2px solid #333;
+            overflow: hidden;
+            background-color: #e6f7ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Bounce Game Controls Debugger</h1>
+        
+        <div class="debug-area">
+            <h2>Key States</h2>
+            <div class="key-state">
+                <div id="key-w" class="key-box">W</div>
+                <div id="key-a" class="key-box">A</div>
+                <div id="key-s" class="key-box">S</div>
+                <div id="key-d" class="key-box">D</div>
+                <div id="key-space" class="key-box">SPACE</div>
+            </div>
+            
+            <div class="key-state">
+                <div id="key-up" class="key-box">↑</div>
+                <div id="key-left" class="key-box">←</div>
+                <div id="key-down" class="key-box">↓</div>
+                <div id="key-right" class="key-box">→</div>
+            </div>
+            
+            <h2>Key Log</h2>
+            <div id="key-log"></div>
+        </div>
+        
+        <div class="playground">
+            <div id="ball" class="ball"></div>
+        </div>
+        
+        <div class="debug-area">
+            <h2>Ball Position</h2>
+            <div id="ball-position">X: 0, Y: 0</div>
+            <h2>Instructions</h2>
+            <p>Use WASD or arrow keys to move the ball. This tests keyboard events directly without 3D rendering or physics.</p>
+            <p>Results are shown in real-time above. If the ball responds here but not in the game, we have a physics/rendering issue, not a keyboard issue.</p>
+        </div>
+    </div>
+
+    <script>
+        // Ball movement settings
+        const ball = document.getElementById('ball');
+        const keyLog = document.getElementById('key-log');
+        const ballPosition = document.getElementById('ball-position');
+        
+        // Key state elements
+        const keyW = document.getElementById('key-w');
+        const keyA = document.getElementById('key-a');
+        const keyS = document.getElementById('key-s');
+        const keyD = document.getElementById('key-d');
+        const keySpace = document.getElementById('key-space');
+        const keyUp = document.getElementById('key-up');
+        const keyLeft = document.getElementById('key-left');
+        const keyDown = document.getElementById('key-down');
+        const keyRight = document.getElementById('key-right');
+        
+        // Ball position
+        let ballX = 0;
+        let ballY = 0;
+        
+        // Key states
+        const keyStates = {
+            w: false,
+            a: false,
+            s: false,
+            d: false,
+            up: false,
+            left: false,
+            down: false,
+            right: false,
+            space: false
+        };
+        
+        // Update ball position
+        function updateBallPosition() {
+            // Calculate movement based on key states
+            if (keyStates.a || keyStates.left) {
+                ballX -= 5;
+            }
+            if (keyStates.d || keyStates.right) {
+                ballX += 5;
+            }
+            if (keyStates.w || keyStates.up || keyStates.space) {
+                ballY -= 5;
+            }
+            if (keyStates.s || keyStates.down) {
+                ballY += 5;
+            }
+            
+            // Constrain ball to playground
+            const playground = document.querySelector('.playground');
+            const maxX = playground.clientWidth - ball.clientWidth;
+            const maxY = playground.clientHeight - ball.clientHeight;
+            
+            ballX = Math.max(0, Math.min(maxX, ballX));
+            ballY = Math.max(0, Math.min(maxY, ballY));
+            
+            // Update ball position
+            ball.style.left = ballX + 'px';
+            ball.style.top = ballY + 'px';
+            
+            // Update position display
+            ballPosition.textContent = `X: ${ballX}, Y: ${ballY}`;
+        }
+        
+        // Update key state UI
+        function updateKeyStateUI() {
+            keyW.classList.toggle('active', keyStates.w);
+            keyA.classList.toggle('active', keyStates.a);
+            keyS.classList.toggle('active', keyStates.s);
+            keyD.classList.toggle('active', keyStates.d);
+            keySpace.classList.toggle('active', keyStates.space);
+            keyUp.classList.toggle('active', keyStates.up);
+            keyLeft.classList.toggle('active', keyStates.left);
+            keyDown.classList.toggle('active', keyStates.down);
+            keyRight.classList.toggle('active', keyStates.right);
+        }
+        
+        // Log key event
+        function logKey(event, state) {
+            const log = document.createElement('div');
+            log.textContent = `${event.key} ${state} (keyCode: ${event.keyCode})`;
+            keyLog.appendChild(log);
+            keyLog.scrollTop = keyLog.scrollHeight;
+            
+            // Trim log if too many entries
+            while (keyLog.children.length > 20) {
+                keyLog.removeChild(keyLog.firstChild);
+            }
+        }
+        
+        // Handle key down
+        window.addEventListener('keydown', (event) => {
+            logKey(event, 'DOWN');
+            
+            // Set key state
+            switch (event.key) {
+                case 'w': case 'W': keyStates.w = true; break;
+                case 'a': case 'A': keyStates.a = true; break;
+                case 's': case 'S': keyStates.s = true; break;
+                case 'd': case 'D': keyStates.d = true; break;
+                case 'ArrowUp': keyStates.up = true; break;
+                case 'ArrowLeft': keyStates.left = true; break;
+                case 'ArrowDown': keyStates.down = true; break;
+                case 'ArrowRight': keyStates.right = true; break;
+                case ' ': keyStates.space = true; break;
+            }
+            
+            updateKeyStateUI();
+            updateBallPosition();
+        });
+        
+        // Handle key up
+        window.addEventListener('keyup', (event) => {
+            logKey(event, 'UP');
+            
+            // Reset key state
+            switch (event.key) {
+                case 'w': case 'W': keyStates.w = false; break;
+                case 'a': case 'A': keyStates.a = false; break;
+                case 's': case 'S': keyStates.s = false; break;
+                case 'd': case 'D': keyStates.d = false; break;
+                case 'ArrowUp': keyStates.up = false; break;
+                case 'ArrowLeft': keyStates.left = false; break;
+                case 'ArrowDown': keyStates.down = false; break;
+                case 'ArrowRight': keyStates.right = false; break;
+                case ' ': keyStates.space = false; break;
+            }
+            
+            updateKeyStateUI();
+        });
+        
+        // Game loop
+        function gameLoop() {
+            updateBallPosition();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Start the game loop
+        gameLoop();
+        
+        // Initialize ball position
+        ballX = (document.querySelector('.playground').clientWidth - ball.clientWidth) / 2;
+        ballY = (document.querySelector('.playground').clientHeight - ball.clientHeight) / 2;
+        updateBallPosition();
+    </script>
+</body>
+</html>

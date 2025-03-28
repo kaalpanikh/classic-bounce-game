@@ -5,6 +5,66 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nokia Bounce Game</title>
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        #pause-controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 9999;
+            display: flex;
+            gap: 10px;
+        }
+        
+        #pause-btn, #resume-btn {
+            padding: 10px 15px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: white;
+        }
+        
+        #pause-btn {
+            background-color: #e74c3c;
+        }
+        
+        #resume-btn {
+            background-color: #2ecc71;
+        }
+        
+        #pause-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9998;
+        }
+        
+        #pause-overlay h2 {
+            color: #3498db;
+            font-size: 36px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+        
+        #big-resume-btn {
+            padding: 15px 30px;
+            font-size: 24px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
     <div id="game-container">
@@ -31,12 +91,23 @@
         </div>
         <canvas id="game-canvas"></canvas>
     </div>
+    
+    <!-- Pause Controls (Always visible) -->
+    <div id="pause-controls">
+        <button id="pause-btn">PAUSE</button>
+        <button id="resume-btn">RESUME</button>
+    </div>
+    
+    <!-- Pause Overlay -->
+    <div id="pause-overlay">
+        <h2>GAME PAUSED</h2>
+        <p style="color: white; font-size: 18px;">Press P or click the button to resume</p>
+        <button id="big-resume-btn">Resume Game</button>
+    </div>
 
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
-    <!-- Use the classic CANNON library -->
-    <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
-    <!-- Change to regular JavaScript (not module) to fix initialization issues -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/renderer.js"></script>
     <script src="js/physics.js"></script>
@@ -44,5 +115,103 @@
     <script src="js/level.js"></script>
     <script src="js/game.js"></script>
     <script src="js/main.js"></script>
+    
+    <!-- Game Controls Script -->
+    <script>
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get control elements
+            const pauseBtn = document.getElementById('pause-btn');
+            const resumeBtn = document.getElementById('resume-btn');
+            const bigResumeBtn = document.getElementById('big-resume-btn');
+            const pauseOverlay = document.getElementById('pause-overlay');
+            const restartButton = document.getElementById('restart-button');
+            const gameOverScreen = document.getElementById('game-over-screen');
+            
+            // Set initial game state
+            let gameInstance = null;
+            
+            // Function to check if game is available
+            function ensureGameAvailable() {
+                // Wait for game to be initialized
+                if (!window.game) {
+                    console.log('Game not ready yet, waiting...');
+                    setTimeout(ensureGameAvailable, 500);
+                    return false;
+                }
+                
+                gameInstance = window.game;
+                console.log('Game instance found and ready');
+                return true;
+            }
+            
+            // Pause function
+            function pauseGame() {
+                if (!ensureGameAvailable()) return;
+                
+                console.log('PAUSING GAME');
+                gameInstance.gamePaused = true;
+                pauseOverlay.style.display = 'flex';
+            }
+            
+            // Resume function
+            function resumeGame() {
+                if (!ensureGameAvailable()) return;
+                
+                console.log('RESUMING GAME');
+                gameInstance.gamePaused = false;
+                pauseOverlay.style.display = 'none';
+            }
+            
+            // Restart function
+            function restartGame() {
+                if (!ensureGameAvailable()) return;
+                
+                console.log('RESTARTING GAME');
+                // Hide game over screen
+                gameOverScreen.classList.add('hidden');
+                // Call the game's restart method
+                gameInstance.restart();
+            }
+            
+            // Set up button event listeners
+            pauseBtn.addEventListener('click', function() {
+                pauseGame();
+            });
+            
+            resumeBtn.addEventListener('click', function() {
+                resumeGame();
+            });
+            
+            bigResumeBtn.addEventListener('click', function() {
+                resumeGame();
+            });
+            
+            // Add restart button event listener
+            if (restartButton) {
+                restartButton.addEventListener('click', function() {
+                    console.log('Restart button clicked');
+                    restartGame();
+                });
+            } else {
+                console.error('Restart button not found in DOM');
+            }
+            
+            // P key handler
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'p' || event.key === 'P') {
+                    console.log('P key pressed');
+                    if (pauseOverlay.style.display === 'flex') {
+                        resumeGame();
+                    } else {
+                        pauseGame();
+                    }
+                }
+            });
+            
+            // Initialize after slight delay
+            setTimeout(ensureGameAvailable, 1000);
+        });
+    </script>
 </body>
 </html>
