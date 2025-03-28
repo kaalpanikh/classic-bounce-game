@@ -1,0 +1,133 @@
+/* Global Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #121212;
+    overflow: hidden;
+}
+
+/* Game Container */
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* Canvas */
+#game-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Loading Screen */
+#loading-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+
+.loading-content {
+    text-align: center;
+    color: #fff;
+}
+
+.loading-content h1 {
+    font-size: 3rem;
+    margin-bottom: 1.5rem;
+    color: #FF4136;
+    text-shadow: 0 0 10px rgba(255, 65, 54, 0.7);
+}
+
+.progress-bar-container {
+    width: 300px;
+    height: 20px;
+    background-color: #333;
+    border-radius: 10px;
+    margin: 20px auto;
+    overflow: hidden;
+}
+
+#progress-bar {
+    height: 100%;
+    width: 0%;
+    background-color: #FF4136;
+    transition: width 0.3s ease;
+}
+
+/* Game UI */
+#game-ui {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    color: white;
+    font-size: 1.2rem;
+    z-index: 5;
+}
+
+#lives-container, #score-container, #level-container {
+    margin-bottom: 10px;
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+
+/* Game Over Screen */
+#game-over-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+
+.game-over-content {
+    background-color: #333;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    color: white;
+}
+
+.game-over-content h2 {
+    font-size: 2.5rem;
+    color: #FF4136;
+    margin-bottom: 20px;
+}
+
+#restart-button {
+    background-color: #FF4136;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1.2rem;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background-color 0.3s;
+}
+
+#restart-button:hover {
+    background-color: #ff5a51;
+}
+
+.hidden {
+    display: none !important;
+}

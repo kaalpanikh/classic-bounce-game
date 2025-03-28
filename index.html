@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nokia Bounce Game</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="loading-screen">
+            <div class="loading-content">
+                <h1>Nokia Bounce</h1>
+                <div class="progress-bar-container">
+                    <div id="progress-bar"></div>
+                </div>
+                <p id="loading-text">Loading...</p>
+            </div>
+        </div>
+        <div id="game-ui">
+            <div id="lives-container">Lives: <span id="lives-count">3</span></div>
+            <div id="score-container">Score: <span id="score-count">0</span></div>
+            <div id="level-container">Level: <span id="level-count">1</span></div>
+        </div>
+        <div id="game-over-screen" class="hidden">
+            <div class="game-over-content">
+                <h2>Game Over</h2>
+                <p>Final Score: <span id="final-score">0</span></p>
+                <button id="restart-button">Play Again</button>
+            </div>
+        </div>
+        <canvas id="game-canvas"></canvas>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+    <!-- Use the classic CANNON library -->
+    <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
+    <!-- Change to regular JavaScript (not module) to fix initialization issues -->
+    <script src="js/ui.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/physics.js"></script>
+    <script src="js/ball.js"></script>
+    <script src="js/level.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
