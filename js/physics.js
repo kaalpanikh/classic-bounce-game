@@ -16,8 +16,8 @@ class Physics {
         // Create a new physics world
         this.world = new CANNON.World();
         
-        // Set gravity
-        this.world.gravity.set(0, -9.82, 0); // Earth's gravity
+        // Set gravity - back to Earth standard for predictable behavior
+        this.world.gravity.set(0, -9.82, 0);
         
         // Set up collision detection
         this.world.broadphase = new CANNON.NaiveBroadphase();
@@ -31,7 +31,7 @@ class Physics {
         // Add ground plane for basic testing
         this.addGroundPlane();
         
-        console.log('Physics world initialized');
+        console.log('Physics world initialized with standard settings');
         return true;
     }
     
@@ -187,6 +187,12 @@ class Physics {
                 
                 // Copy the body quaternion to the mesh
                 object.mesh.quaternion.copy(object.body.quaternion);
+                
+                // Additional velocity check to prevent objects from going too high
+                if (object.body.position.y > 10 && object.body.velocity.y > 0) {
+                    // Apply dampening force to objects that are too high
+                    object.body.velocity.y *= 0.8;
+                }
             }
         });
     }

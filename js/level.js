@@ -110,6 +110,10 @@ class Level {
         this.addPlatform({ x: 8, y: 0, z: 0 }, { x: 5, y: 0.5, z: 3 });
         this.addPlatform({ x: 15, y: 1, z: 0 }, { x: 5, y: 0.5, z: 3 });
         
+        // Add some bouncy platforms
+        this.addBouncyPlatform({ x: 2, y: -1, z: 0 }, { x: 3, y: 0.5, z: 3 });
+        this.addBouncyPlatform({ x: -2, y: -1, z: 0 }, { x: 3, y: 0.5, z: 3 });
+        
         // Add a checkpoint
         this.addCheckpoint({ x: 8, y: 1, z: 0 });
         
@@ -167,16 +171,92 @@ class Level {
         // Add to scene
         this.scene.add(mesh);
         
-        // Create physics body
+        // Create special platform material for better physics
+        const platformMaterial = new CANNON.Material('platformMaterial');
+        
+        // Create physics body with platform material
         const body = this.physicsWorld.createBox(
             size,
             position,
             0, // Mass of 0 makes it static
-            { friction: 0.5, restitution: 0.2 }
+            { 
+                friction: 0.5, 
+                restitution: 0.2,
+                material: platformMaterial
+            }
+        );
+        
+        // Store platform type for game mechanics
+        const platformType = 'normal'; // Options: normal, bouncy, sticky
+        
+        // Create platform object
+        const platform = { mesh, body, position, size, type: platformType };
+        
+        // Add to platforms array
+        this.platforms.push(platform);
+        
+        // Register for physics updates
+        this.physicsWorld.addObjectToUpdate(platform);
+        
+        return platform;
+    }
+    
+    /**
+     * Add a bouncy platform to the level
+     * @param {Object} position - Position {x, y, z}
+     * @param {Object} size - Size {x, y, z}
+     * @returns {Object} - The created platform object
+     */
+    addBouncyPlatform(position, size) {
+        // Create platform mesh with distinctive bouncy look
+        const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+        const material = new THREE.MeshStandardMaterial({ 
+            color: 0x00FF00, // Green color to indicate bounciness
+            roughness: 0.3,
+            metalness: 0.7,
+            emissive: 0x003300,
+            emissiveIntensity: 0.2
+        });
+        
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(position.x, position.y, position.z);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        
+        // Add to scene
+        this.scene.add(mesh);
+        
+        // Create special bouncy material
+        const bouncyMaterial = new CANNON.Material('bouncyMaterial');
+        
+        // Create physics body with bouncy material properties
+        const body = this.physicsWorld.createBox(
+            size,
+            position,
+            0, // Mass of 0 makes it static
+            { 
+                friction: 0.1,  // Low friction 
+                restitution: 0.9, // High bounce
+                material: bouncyMaterial
+            }
         );
         
         // Create platform object
-        const platform = { mesh, body, position, size };
+        const platform = { 
+            mesh, 
+            body, 
+            position, 
+            size, 
+            type: 'bouncy',
+            
+            // Add animation properties for bouncy effect
+            animation: {
+                originalY: position.y,
+                time: Math.random() * Math.PI * 2, // Random start time
+                speed: 2 + Math.random() * 2,      // Random speed
+                amplitude: 0.05                    // Subtle bounce amount
+            }
+        };
         
         // Add to platforms array
         this.platforms.push(platform);
@@ -641,6 +721,15 @@ class Level {
         // Animate checkpoints
         this.checkpoints.forEach(checkpoint => {
             checkpoint.mesh.rotation.y += deltaTime * 0.5;
+        });
+        
+        // Animate bouncy platforms
+        this.platforms.forEach(platform => {
+            if (platform.type === 'bouncy') {
+                platform.mesh.position.y = platform.animation.originalY + 
+                    Math.sin(Date.now() * platform.animation.speed + platform.animation.time) * 
+                    platform.animation.amplitude;
+            }
         });
     }
     

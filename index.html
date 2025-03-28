@@ -64,6 +64,56 @@
             cursor: pointer;
             margin-top: 20px;
         }
+        
+        /* Mobile Control Buttons */
+        #mobile-controls {
+            position: fixed;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            z-index: 9990;
+            padding: 0 20px;
+        }
+        
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+        }
+        
+        /* Game over screen styling */
+        #game-over-screen .game-over-content {
+            background-color: rgba(0, 0, 0, 0.85);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            color: white;
+        }
+        
+        #restart-button {
+            padding: 15px 30px;
+            font-size: 20px;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.2s;
+        }
+        
+        #restart-button:hover {
+            background-color: #c0392b;
+        }
     </style>
 </head>
 <body>
@@ -98,14 +148,25 @@
         <button id="resume-btn">RESUME</button>
     </div>
     
+    <!-- Mobile Controls -->
+    <div id="mobile-controls">
+        <div class="control-btn" id="left-btn">
+            <span style="color:white; font-size:24px;">←</span>
+        </div>
+        <div class="control-btn" id="up-btn">
+            <span style="color:white; font-size:24px;">↑</span>
+        </div>
+        <div class="control-btn" id="right-btn">
+            <span style="color:white; font-size:24px;">→</span>
+        </div>
+    </div>
+    
     <!-- Pause Overlay -->
     <div id="pause-overlay">
-        <h2>GAME PAUSED</h2>
-        <p style="color: white; font-size: 18px;">Press P or click the button to resume</p>
+        <h2>Game Paused</h2>
         <button id="big-resume-btn">Resume Game</button>
     </div>
-
-    <!-- Scripts -->
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
     <script src="js/ui.js"></script>
@@ -128,6 +189,11 @@
             const restartButton = document.getElementById('restart-button');
             const gameOverScreen = document.getElementById('game-over-screen');
             
+            // Mobile control buttons
+            const leftBtn = document.getElementById('left-btn');
+            const rightBtn = document.getElementById('right-btn');
+            const upBtn = document.getElementById('up-btn');
+            
             // Set initial game state
             let gameInstance = null;
             
@@ -141,37 +207,34 @@
                 }
                 
                 gameInstance = window.game;
-                console.log('Game instance found and ready');
                 return true;
             }
             
-            // Pause function
+            // Function to pause the game
             function pauseGame() {
-                if (!ensureGameAvailable()) return;
-                
-                console.log('PAUSING GAME');
-                gameInstance.gamePaused = true;
-                pauseOverlay.style.display = 'flex';
+                if (ensureGameAvailable()) {
+                    gameInstance.pause();
+                    pauseOverlay.style.display = 'flex';
+                    console.log('Game paused');
+                }
             }
             
-            // Resume function
+            // Function to resume the game
             function resumeGame() {
-                if (!ensureGameAvailable()) return;
-                
-                console.log('RESUMING GAME');
-                gameInstance.gamePaused = false;
-                pauseOverlay.style.display = 'none';
+                if (ensureGameAvailable()) {
+                    gameInstance.resume();
+                    pauseOverlay.style.display = 'none';
+                    console.log('Game resumed');
+                }
             }
             
-            // Restart function
+            // Function to restart the game
             function restartGame() {
-                if (!ensureGameAvailable()) return;
-                
-                console.log('RESTARTING GAME');
-                // Hide game over screen
-                gameOverScreen.classList.add('hidden');
-                // Call the game's restart method
-                gameInstance.restart();
+                if (ensureGameAvailable()) {
+                    gameOverScreen.classList.add('hidden');
+                    console.log('Restart triggered by user button');
+                    gameInstance.restart();
+                }
             }
             
             // Set up button event listeners
@@ -187,18 +250,56 @@
                 resumeGame();
             });
             
-            // Add restart button event listener
-            if (restartButton) {
-                restartButton.addEventListener('click', function() {
-                    console.log('Restart button clicked');
-                    restartGame();
+            // Make sure the restart button properly restarts the game
+            restartButton.addEventListener('click', function() {
+                console.log('Play Again button clicked');
+                restartGame();
+            });
+            
+            // Mobile control button handlers
+            function handleButtonPress(btn, direction) {
+                btn.addEventListener('touchstart', function(e) {
+                    e.preventDefault(); // Prevent scrolling
+                    if (ensureGameAvailable() && gameInstance.ball) {
+                        gameInstance.keyState[direction] = true;
+                    }
                 });
-            } else {
-                console.error('Restart button not found in DOM');
+                
+                btn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    if (ensureGameAvailable() && gameInstance.ball) {
+                        gameInstance.keyState[direction] = false;
+                    }
+                });
+                
+                // Also support mouse events for testing on desktop
+                btn.addEventListener('mousedown', function() {
+                    if (ensureGameAvailable() && gameInstance.ball) {
+                        gameInstance.keyState[direction] = true;
+                    }
+                });
+                
+                btn.addEventListener('mouseup', function() {
+                    if (ensureGameAvailable() && gameInstance.ball) {
+                        gameInstance.keyState[direction] = false;
+                    }
+                });
             }
             
-            // P key handler
+            handleButtonPress(leftBtn, 'left');
+            handleButtonPress(rightBtn, 'right');
+            handleButtonPress(upBtn, 'up');
+            
+            // Add Enter key support for "Play Again" button
             document.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    // Check if game over screen is visible
+                    if (!gameOverScreen.classList.contains('hidden')) {
+                        console.log('Enter key pressed on Game Over screen - restarting game');
+                        restartGame();
+                    }
+                }
+                
                 if (event.key === 'p' || event.key === 'P') {
                     console.log('P key pressed');
                     if (pauseOverlay.style.display === 'flex') {

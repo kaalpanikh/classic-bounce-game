@@ -33,7 +33,8 @@ class Game {
         this.eventFlags = {
             levelComplete: false,
             powerUpCollected: false,
-            checkpointReached: false
+            checkpointReached: false,
+            groundContact: false
         };
         
         // Store a reference to the game loop function with the correct 'this' binding
@@ -103,71 +104,63 @@ class Game {
     setupControls() {
         console.log('Setting up controls...');
         
-        // Track key states
-        this.keyStates = {
+        // Track key states - allow direct access to this object from outside
+        this.keyState = {
             left: false,
             right: false,
-            jump: false
+            up: false,
+            down: false
         };
         
         // Keyboard controls
         window.addEventListener('keydown', (event) => {
             console.log('Key pressed:', event.key);
             
-            switch (event.key) {
-                case 'ArrowLeft':
-                case 'a':
-                case 'A':
-                    this.keyStates.left = true;
-                    if (!this.gamePaused) this.ball.moveLeft(true);
-                    break;
-                case 'ArrowRight':
-                case 'd':
-                case 'D':
-                    this.keyStates.right = true;
-                    if (!this.gamePaused) this.ball.moveRight(true);
-                    break;
-                case ' ': // Spacebar
-                case 'ArrowUp':
-                case 'w':
-                case 'W':
-                    this.keyStates.jump = true;
-                    if (!this.gamePaused) this.ball.jump();
-                    break;
-                case 'p':
-                case 'P':
-                    this.togglePause();
-                    break;
-                case 'r':
-                case 'R':
-                    if (event.ctrlKey) {
-                        this.restart();
-                    }
-                    break;
-            }
-        });
-        
-        window.addEventListener('keyup', (event) => {
-            console.log('Key released:', event.key);
+            if (this.gamePaused) return; // Don't process keys when paused
             
             switch (event.key) {
                 case 'ArrowLeft':
                 case 'a':
                 case 'A':
-                    this.keyStates.left = false;
-                    if (!this.gamePaused) this.ball.moveLeft(false);
+                    this.keyState.left = true;
+                    this.ball.moveLeft(true);
                     break;
                 case 'ArrowRight':
                 case 'd':
                 case 'D':
-                    this.keyStates.right = false;
-                    if (!this.gamePaused) this.ball.moveRight(false);
+                    this.keyState.right = true;
+                    this.ball.moveRight(true);
                     break;
                 case ' ': // Spacebar
                 case 'ArrowUp':
                 case 'w':
                 case 'W':
-                    this.keyStates.jump = false;
+                    this.keyState.up = true;
+                    this.ball.jump();
+                    break;
+                // P key pause handling now in HTML
+            }
+        });
+        
+        window.addEventListener('keyup', (event) => {
+            switch (event.key) {
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    this.keyState.left = false;
+                    this.ball.moveLeft(false);
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    this.keyState.right = false;
+                    this.ball.moveRight(false);
+                    break;
+                case ' ': // Spacebar
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    this.keyState.up = false;
                     break;
             }
         });
@@ -175,9 +168,10 @@ class Game {
         // Handle window blur event (user switches tabs/apps)
         window.addEventListener('blur', () => {
             // Reset all key states when window loses focus
-            this.keyStates.left = false;
-            this.keyStates.right = false;
-            this.keyStates.jump = false;
+            this.keyState.left = false;
+            this.keyState.right = false;
+            this.keyState.up = false;
+            this.keyState.down = false;
             
             // Stop all movement
             this.ball.moveLeft(false);
@@ -281,13 +275,114 @@ class Game {
     }
     
     /**
-     * Toggle pause state - DEPRECATED, now handled by external pause system
-     * This method is kept for backward compatibility but will not be used
+     * Pause the game
+     */
+    pause() {
+        if (!this.gamePaused) {
+            console.log('Pausing game...');
+            this.gamePaused = true;
+            // Stop the game loop
+            if (this.animationFrameId) {
+                cancelAnimationFrame(this.animationFrameId);
+                this.animationFrameId = null;
+            }
+            // Reset all key states
+            this.keyState = {
+                left: false,
+                right: false,
+                up: false,
+                down: false
+            };
+        }
+    }
+    
+    /**
+     * Resume the game
+     */
+    resume() {
+        if (this.gamePaused) {
+            console.log('Resuming game...');
+            this.gamePaused = false;
+            // Restart the game loop
+            this.animationFrameId = requestAnimationFrame(this.boundGameLoop);
+        }
+    }
+    
+    /**
+     * Toggle pause state
      */
     togglePause() {
-        console.log('Original togglePause called - now deprecated');
-        // This function is intentionally empty as we're using the new pause system
-        // Don't remove this method as other code might reference it
+        if (this.gamePaused) {
+            this.resume();
+        } else {
+            this.pause();
+        }
+    }
+    
+    /**
+     * Restart the game
+     */
+    restart() {
+        console.log('Restarting game...');
+        
+        // Reset game state
+        this.lives = 3;
+        this.score = 0;
+        this.currentLevel = 1;
+        this.isRunning = true;
+        this.gamePaused = false;
+        
+        // Update UI and hide game over screen
+        this.ui.updateLives(this.lives);
+        this.ui.updateScore(this.score);
+        this.ui.updateLevel(this.currentLevel);
+        
+        // Make sure game over screen is hidden
+        const gameOverScreen = document.getElementById('game-over-screen');
+        if (gameOverScreen) {
+            gameOverScreen.classList.add('hidden');
+        }
+        
+        // Stop any existing animation frame to prevent duplicates
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+        
+        // Reset physics world to ensure clean state
+        if (this.physics && this.physics.world) {
+            this.physics.world.gravity.set(0, -9.82, 0);
+        }
+        
+        // Reset ball position and state with a small delay to ensure physics is ready
+        setTimeout(() => {
+            if (this.ball) {
+                this.ball.reset();
+                
+                // Ensure the ball has natural gravity
+                if (this.ball.body) {
+                    // Apply initial downward velocity to prevent floating
+                    this.ball.body.velocity.set(0, -0.5, 0);
+                }
+            }
+            
+            // Reset level
+            if (this.level) {
+                this.level.loadLevel(this.currentLevel);
+            }
+        }, 100);
+        
+        // Reset key states
+        this.keyState = {
+            left: false,
+            right: false,
+            up: false,
+            down: false
+        };
+        
+        // Restart the game loop immediately
+        this.clock.start();
+        this.animationFrameId = requestAnimationFrame(this.boundGameLoop);
     }
     
     /**
@@ -297,45 +392,8 @@ class Game {
         if (!this.isRunning) {
             this.isRunning = true;
             this.clock.start();
-            requestAnimationFrame(this.boundGameLoop);
+            this.animationFrameId = requestAnimationFrame(this.boundGameLoop);
             console.log('Game started');
-        }
-    }
-    
-    /**
-     * Pause the game
-     */
-    pause() {
-        this.isRunning = false;
-        this.clock.stop();
-        console.log('Game paused');
-    }
-    
-    /**
-     * Restart the game
-     */
-    restart() {
-        this.lives = 3;
-        this.score = 0;
-        this.currentLevel = 1;
-        
-        // Update UI
-        this.ui.updateLives(this.lives);
-        this.ui.updateScore(this.score);
-        this.ui.updateLevel(this.currentLevel);
-        
-        // Reset ball and level
-        this.ball.reset();
-        this.level.loadLevel(this.currentLevel);
-        
-        // Resume the game if it's paused
-        if (this.gamePaused) {
-            this.togglePause();
-        }
-        
-        // Restart the game if it's not running
-        if (!this.isRunning) {
-            this.start();
         }
     }
     
@@ -374,7 +432,7 @@ class Game {
         this.renderer.render();
         
         // Schedule the next frame
-        requestAnimationFrame(this.boundGameLoop);
+        this.animationFrameId = requestAnimationFrame(this.boundGameLoop);
     }
     
     /**
@@ -382,7 +440,7 @@ class Game {
      */
     processDirectControls() {
         // Apply movement directly based on key states
-        if (this.keyStates.left) {
+        if (this.keyState.left) {
             // Direct ball position change for instant visual feedback
             const currentPosition = this.ball.mesh.position.clone();
             this.ball.mesh.position.set(currentPosition.x - 0.1, currentPosition.y, currentPosition.z);
@@ -391,7 +449,7 @@ class Game {
             const currentVel = this.ball.body.velocity;
             this.ball.body.velocity.set(-8, currentVel.y, currentVel.z);
         } 
-        else if (this.keyStates.right) {
+        else if (this.keyState.right) {
             // Direct ball position change for instant visual feedback
             const currentPosition = this.ball.mesh.position.clone();
             this.ball.mesh.position.set(currentPosition.x + 0.1, currentPosition.y, currentPosition.z);
@@ -458,6 +516,66 @@ class Game {
         // Check if ball has fallen out of bounds
         if (this.ball.position.y < -10) {
             this.loseLife();
+        }
+        
+        // NEW: Check if ball is touching the green ground (not on a platform)
+        this.checkGroundContact();
+    }
+    
+    /**
+     * Check if the ball is touching the green ground
+     */
+    checkGroundContact() {
+        // If we've recently lost a life due to ground contact, don't check again yet
+        if (this.eventFlags.groundContact) {
+            return;
+        }
+        
+        // If the ball is below a certain height and not on any platform, it's touching the ground
+        // Use a small negative value to account for slight platform positioning variations
+        if (this.ball.position.y < 0.2 && this.ball.position.y > -1) {
+            const onPlatform = this.level.platforms.some(platform => {
+                // Check if ball is above this platform with expanded tolerance
+                const ballX = this.ball.position.x;
+                const ballZ = this.ball.position.z;
+                
+                // Add extra margin to platform boundaries for more generous collision detection
+                const margin = this.ball.radius * 0.8;
+                const platformMinX = platform.position.x - platform.size.x / 2 - margin;
+                const platformMaxX = platform.position.x + platform.size.x / 2 + margin;
+                const platformMinZ = platform.position.z - platform.size.z / 2 - margin;
+                const platformMaxZ = platform.position.z + platform.size.z / 2 + margin;
+                
+                // Vertical position check - ball should be near the top of the platform
+                const platformTopY = platform.position.y + platform.size.y / 2;
+                const ballBottomY = this.ball.position.y - this.ball.radius;
+                const verticalProximity = Math.abs(platformTopY - ballBottomY);
+                
+                return (
+                    ballX >= platformMinX && 
+                    ballX <= platformMaxX && 
+                    ballZ >= platformMinZ && 
+                    ballZ <= platformMaxZ &&
+                    verticalProximity < 0.5  // Ball must be near the top surface
+                );
+            });
+            
+            if (!onPlatform) {
+                // Ball is touching the green ground
+                this.loseLife();
+                
+                // Apply a stronger bounce to escape the ground
+                this.ball.body.velocity.y = 10;
+                
+                // Show notification
+                this.ui.showNotification('Deadly green surface!', 'warning', 1000);
+                
+                // Set flag to prevent multiple life losses in rapid succession
+                this.eventFlags.groundContact = true;
+                setTimeout(() => {
+                    this.eventFlags.groundContact = false;
+                }, 2000);
+            }
         }
     }
     
@@ -533,6 +651,9 @@ class Game {
             
             // Respawn the ball at the last checkpoint
             this.ball.respawn();
+        } else {
+            // Game over when no more lives
+            this.gameOver();
         }
     }
     

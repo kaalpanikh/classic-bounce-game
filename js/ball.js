@@ -43,6 +43,14 @@ class Ball {
         this.maxTrailPoints = 20;
         this.lastTrailUpdateTime = 0;
         this.trailUpdateInterval = 0.05; // Seconds between trail updates
+        
+        // Enable continuous, small bouncing like the original Nokia game
+        this.autoBounce = true;
+        this.idleBounceCooldown = 0;
+        this.lastBounceTime = 0;
+        
+        // Visual stabilizer to prevent flashing
+        this.lastMeshPosition = new THREE.Vector3();
     }
     
     /**
@@ -68,30 +76,25 @@ class Ball {
             // Add to scene
             this.scene.add(this.mesh);
             
-            // Create physics body with more realistic properties
+            // *** USE EXACT SAME PHYSICS PROPERTIES AS BLUE BALL ***
+            const blueballPhysics = {
+                restitution: 0.45,
+                friction: 0.25,
+                contactEquationStiffness: 2e7,
+                contactEquationRelaxation: 5
+            };
+            
             this.body = this.physicsWorld.createSphere(
                 this.radius,
                 this.initialPosition,
                 this.mass,
-                { restitution: 0.5, friction: 0.3 } // Adjusted for better gameplay feel
+                blueballPhysics
             );
             
-            // Add contact event to check if on ground
-            this.body.addEventListener('collide', (event) => {
-                // Check if collision is with the ground or platform
-                const contactNormal = new CANNON.Vec3();
-                const contact = event.contact;
-                
-                // Get contact normal - will be used to determine if ball is on ground
-                if (contact && contact.ni) {
-                    contact.ni.negate(contactNormal);
-                    
-                    // If normal is pointing up, we are on a ground or platform
-                    if (contactNormal.y > 0.5) {
-                        this.isOnGround = true;
-                    }
-                }
-            });
+            // Apply blue ball's exact settings
+            this.body.linearDamping = 0.08;
+            this.body.angularDamping = 0.4;
+            this.body.fixedRotation = false;
             
             // Initialize trail effect
             this.initTrail();
@@ -102,10 +105,135 @@ class Ball {
                 body: this.body
             });
             
+            // Add contact material for ball vs ground/platforms
+            this.setupContactMaterials();
+            
             return true;
         } catch (error) {
             console.error('Error initializing ball:', error);
             throw error;
+        }
+    }
+    
+    /**
+     * Set up special contact materials for different surface interactions
+     */
+    setupContactMaterials() {
+        // Create a ball material
+        const ballMaterial = new CANNON.Material('ballMaterial');
+        this.body.material = ballMaterial;
+        
+        // Exactly match the blue ball's contact materials
+        const platformContact = new CANNON.ContactMaterial(
+            ballMaterial,
+            new CANNON.Material('platformMaterial'),
+            {
+                friction: 0.25,         // Blue ball's exact friction
+                restitution: 0.45,      // Blue ball's exact bounce
+                contactEquationRelaxation: 5,
+                contactEquationStiffness: 2e7
+            }
+        );
+        
+        // Bouncy platforms with exact blue ball physics
+        const bouncyContact = new CANNON.ContactMaterial(
+            ballMaterial,
+            new CANNON.Material('bouncyMaterial'),
+            {
+                friction: 0.2,
+                restitution: 0.65,
+                contactEquationRelaxation: 6,
+                contactEquationStiffness: 2e7
+            }
+        );
+        
+        // Add contact materials to the world
+        this.physicsWorld.world.addContactMaterial(platformContact);
+        this.physicsWorld.world.addContactMaterial(bouncyContact);
+    }
+    
+    /**
+     * Cap extreme velocities to prevent physics issues
+     * Exact implementation from blue ball
+     */
+    capVerticalVelocity() {
+        // Always apply consistent downward force when the ball is above a certain height
+        // This is the key physics difference that makes the blue ball come down naturally
+        if (this.body.position.y > 3) {
+            // Apply a stronger downward force based on height
+            const heightFactor = Math.min((this.body.position.y - 3) / 5, 1);
+            const gravityMultiplier = 0.3 + (heightFactor * 0.5);
+            
+            // Apply stronger downward force when moving up vs. moving down
+            if (this.body.velocity.y > 0) {
+                this.body.velocity.y -= gravityMultiplier * 0.6;
+            } else {
+                // Slightly boost downward velocity for consistent fall behavior
+                this.body.velocity.y -= gravityMultiplier * 0.3;
+            }
+        }
+        
+        // Hard limit on upward velocity - essential for proper physics
+        if (this.body.velocity.y > 5) {
+            this.body.velocity.y = 5;
+        }
+        
+        // Hard limit on downward velocity - prevents too-fast falls
+        if (this.body.velocity.y < -12) {
+            this.body.velocity.y = -12;
+        }
+        
+        // Blue ball's original extra gravity for realistic arcs
+        if (this.body.position.y > 4 && this.body.velocity.y > 0) {
+            this.body.velocity.y -= 0.4;
+        }
+    }
+    
+    /**
+     * Update the ball
+     * @param {number} deltaTime - Time since last update
+     */
+    update(deltaTime) {
+        const time = performance.now() / 1000; // Current time in seconds
+        
+        // Update position vector for easy access
+        this.position = this.body.position;
+        
+        // Add a downward raycast to more reliably detect ground
+        this.checkGroundContact();
+        
+        // Always make sure physics is being properly applied
+        this.ensurePhysicsIntegrity();
+        
+        // Apply strict velocity caps to prevent unwanted movement
+        this.capVerticalVelocity();
+        
+        // Always apply authentic Nokia-style continuous bouncing
+        this.applyContinuousBounce();
+        
+        // Update the trail effect
+        this.updateTrail(time);
+        
+        // Update jump cooldown
+        if (this.jumpCooldown > 0) {
+            this.jumpCooldown -= deltaTime;
+        }
+        
+        // Add a slight rotation based on movement for visual effect
+        if (this.body.velocity.x !== 0) {
+            this.mesh.rotation.z -= this.body.velocity.x * 0.01;
+        }
+        
+        // Anti-flashing stabilization - only allow smooth position changes
+        if (this.lastMeshPosition.distanceTo(this.mesh.position) > 1.0) {
+            // If there's a large jump, it's likely a teleport/respawn - allow it
+            this.lastMeshPosition.copy(this.mesh.position);
+        } else if (this.lastMeshPosition.distanceTo(this.mesh.position) < 0.01) {
+            // For tiny jitters, use the previous position to prevent flashing
+            this.mesh.position.copy(this.lastMeshPosition);
+        } else {
+            // For normal movement, store the position
+            this.lastMeshPosition.copy(this.mesh.position);
         }
     }
     
@@ -180,38 +308,148 @@ class Ball {
     }
     
     /**
-     * Update the ball
-     * @param {number} deltaTime - Time since last update
+     * Apply continuous bounce to keep the ball always bouncing
      */
-    update(deltaTime) {
-        const time = performance.now() / 1000; // Current time in seconds
+    applyContinuousBounce() {
+        // Add constant downward force to simulate proper gravity behavior
+        // This is what makes the blue ball come down properly
+        if (this.body.velocity.y > 0 && this.body.position.y > 1.5) {
+            // Apply progressively stronger downward force the higher we go
+            const heightFactor = Math.min(this.body.position.y / 8, 1);
+            const gravityMultiplier = 0.3 + (heightFactor * 0.4);
+            this.body.velocity.y -= gravityMultiplier;
+        }
         
-        // Debug movement state
-        if (this.movingLeft || this.movingRight) {
-            console.log('Movement state:', 
-                this.movingLeft ? 'LEFT' : (this.movingRight ? 'RIGHT' : 'NONE'), 
-                'Velocity X:', this.body ? this.body.velocity.x.toFixed(2) : 'N/A'
+        // Detect if ball is at rest on a surface (true idle state)
+        const isIdle = this.isOnGround && Math.abs(this.body.velocity.y) < 0.1 && 
+                       Math.abs(this.body.velocity.x) < 0.5;
+        
+        // Only apply idle bounce if we're truly idle to prevent interfering with natural bounce
+        if (isIdle) {
+            // Calculate time since last bounce
+            const currentTime = performance.now();
+            const timeSinceLastBounce = currentTime - this.lastBounceTime;
+            
+            // Apply Nokia-style continuous small bounce (occurs about once per second)
+            if (timeSinceLastBounce > 800) { // 800ms timing matches original Nokia bounce rhythm
+                // Apply just enough force for a tiny continuous bounce
+                this.body.velocity.y = 1.5;
+                
+                // Add a tiny random horizontal variance like in the original
+                const randomXVariance = (Math.random() - 0.5) * 0.2;
+                this.body.velocity.x += randomXVariance;
+                
+                // Apply subtle visual effect
+                this.applyBounceVisualEffect(1.05);
+                
+                // Record the bounce time
+                this.lastBounceTime = currentTime;
+            }
+        }
+    }
+    
+    /**
+     * Use raycasting to reliably detect ground contact
+     */
+    checkGroundContact() {
+        // Previous ground state for detecting landing moments
+        const wasOnGround = this.isOnGround;
+        
+        // Create a raycast from slightly above the ball's center downward
+        const start = new CANNON.Vec3(
+            this.body.position.x,
+            this.body.position.y,
+            this.body.position.z
+        );
+        
+        const end = new CANNON.Vec3(
+            this.body.position.x,
+            this.body.position.y - this.radius - 0.05, // Shorter raycast for more conservative detection
+            this.body.position.z
+        );
+        
+        // Perform the raycast
+        const result = new CANNON.RaycastResult();
+        this.physicsWorld.world.raycastClosest(start, end, {}, result);
+        
+        // If hit something, we're on the ground
+        if (result.hasHit) {
+            this.isOnGround = true;
+            
+            // If we just landed and have significant downward velocity, bounce!
+            if (!wasOnGround && this.body.velocity.y < -2) {
+                this.bounce();
+            }
+            
+            // Zero out very small vertical velocity to prevent micro-bounces
+            if (Math.abs(this.body.velocity.y) < 0.5) {
+                this.body.velocity.y = 0;
+            }
+        } else {
+            // Only consider not on ground if we've actually moved away from it
+            if (this.body.velocity.y < -0.5) {
+                this.isOnGround = false;
+            }
+        }
+    }
+    
+    /**
+     * Handle bounce physics and effects
+     */
+    bounce() {
+        // Get current velocity for bounce strength calculation
+        const impactVelocity = -this.body.velocity.y;
+        
+        // Apply Nokia-style bounce effect with predictable physics
+        if (impactVelocity > 2) {
+            // Calculate bounce factor based on impact velocity
+            // Higher impacts will have lower restitution for better control
+            let bounceFactor = 0.4; // Default Nokia-like moderate bounce
+            
+            if (impactVelocity > 10) {
+                bounceFactor = 0.3;  // Reduce bounce for very high impacts (better control)
+            } else if (impactVelocity < 5) {
+                bounceFactor = 0.5;  // More bounce for gentle impacts
+            }
+            
+            // Apply bounce impulse with a cap for predictability
+            const bounceVelocity = Math.min(impactVelocity * bounceFactor, 8);
+            this.body.velocity.y = bounceVelocity;
+            
+            // Scale visual effect based on impact (squash and stretch)
+            const bounceScale = Math.min(1 + (impactVelocity / 30), 1.25);
+            this.applyBounceVisualEffect(bounceScale);
+        }
+    }
+    
+    /**
+     * Apply a visual squash and stretch effect on bounce
+     */
+    applyBounceVisualEffect(scale) {
+        // Store original scale to restore later
+        const originalScale = this.mesh.scale.clone();
+        
+        // Apply squash effect (flatten vertically, expand horizontally)
+        this.mesh.scale.set(
+            originalScale.x * scale,
+            originalScale.y * (0.8 / scale),
+            originalScale.z * scale
+        );
+        
+        // Restore to normal over time
+        setTimeout(() => {
+            // Create a subtle bounce-back effect
+            this.mesh.scale.set(
+                originalScale.x * 0.95,
+                originalScale.y * 1.05,
+                originalScale.z * 0.95
             );
-        }
-        
-        // Update jump cooldown
-        if (this.jumpCooldown > 0) {
-            this.jumpCooldown -= deltaTime;
-        }
-        
-        // Update position vector for easy access
-        this.position = this.body.position;
-        
-        // Update the trail effect
-        this.updateTrail(time);
-        
-        // Reset ground detection for next frame (will be set by collision events)
-        this.isOnGround = false;
-        
-        // Add a slight rotation based on movement for visual effect
-        if (this.body.velocity.x !== 0) {
-            this.mesh.rotation.z -= this.body.velocity.x * 0.01;
-        }
+            
+            // Then restore original scale
+            setTimeout(() => {
+                this.mesh.scale.copy(originalScale);
+            }, 100);
+        }, 100);
     }
     
     /**
@@ -310,36 +548,38 @@ class Ball {
                 body: this.body
             });
             
-            // Create new body
+            // Create new body with exact blue ball physics properties
+            const perfectBluePhysics = {
+                restitution: 0.45,
+                friction: 0.25,
+                contactEquationStiffness: 2e7,
+                contactEquationRelaxation: 5
+            };
+            
             this.body = this.physicsWorld.createSphere(
                 this.largeRadius,
                 { x: position.x, y: position.y, z: position.z },
-                this.mass * 1.5, // Slightly more mass when larger
-                { restitution: 0.5, friction: 0.3 }
+                this.mass * 1.5,
+                perfectBluePhysics
             );
             
             // Apply previous velocity
             this.body.velocity.copy(velocity);
             this.body.angularVelocity.copy(angularVelocity);
             
-            // Re-register for physics updates
+            // Add key settings from blue ball
+            this.body.linearDamping = 0.08;
+            this.body.angularDamping = 0.4;
+            this.body.fixedRotation = false;
+            
+            // Register the new body with physics world
             this.physicsWorld.addObjectToUpdate({
                 mesh: this.mesh,
                 body: this.body
             });
             
-            // Add collision event listener again
-            this.body.addEventListener('collide', (event) => {
-                const contactNormal = new CANNON.Vec3();
-                const contact = event.contact;
-                
-                if (contact && contact.ni) {
-                    contact.ni.negate(contactNormal);
-                    if (contactNormal.y > 0.5) {
-                        this.isOnGround = true;
-                    }
-                }
-            });
+            // Apply special contact materials
+            this.setupContactMaterials();
         }
     }
     
@@ -350,10 +590,10 @@ class Ball {
         if (this.isEnlarged) {
             this.isEnlarged = false;
             
-            // Scale the mesh back
+            // Scale the mesh back to normal
             this.mesh.scale.set(1, 1, 1);
             
-            // Change color back to red
+            // Restore original color
             this.mesh.material.color.set(0xFF0000);
             this.mesh.material.emissive.set(0x330000);
             this.trail.material.color.set(0xFF6666);
@@ -369,36 +609,38 @@ class Ball {
                 body: this.body
             });
             
-            // Create new body
+            // Create new body with exact blue ball physics properties
+            const perfectBluePhysics = {
+                restitution: 0.45,
+                friction: 0.25,
+                contactEquationStiffness: 2e7,
+                contactEquationRelaxation: 5
+            };
+            
             this.body = this.physicsWorld.createSphere(
                 this.normalRadius,
                 { x: position.x, y: position.y, z: position.z },
                 this.mass,
-                { restitution: 0.5, friction: 0.3 }
+                perfectBluePhysics
             );
             
             // Apply previous velocity
             this.body.velocity.copy(velocity);
             this.body.angularVelocity.copy(angularVelocity);
             
-            // Re-register for physics updates
+            // Add key settings from blue ball
+            this.body.linearDamping = 0.08;
+            this.body.angularDamping = 0.4;
+            this.body.fixedRotation = false;
+            
+            // Register the new body with physics world
             this.physicsWorld.addObjectToUpdate({
                 mesh: this.mesh,
                 body: this.body
             });
             
-            // Add collision event listener again
-            this.body.addEventListener('collide', (event) => {
-                const contactNormal = new CANNON.Vec3();
-                const contact = event.contact;
-                
-                if (contact && contact.ni) {
-                    contact.ni.negate(contactNormal);
-                    if (contactNormal.y > 0.5) {
-                        this.isOnGround = true;
-                    }
-                }
-            });
+            // Apply special contact materials
+            this.setupContactMaterials();
         }
     }
     
@@ -426,8 +668,8 @@ class Ball {
         this.powerUpTimers.speed = setTimeout(() => {
             this.moveForce = originalMoveForce;
             this.maxSpeed = originalMaxSpeed;
-            this.mesh.material.emissive.set(this.isEnlarged ? 0x001133 : 0x330000);
-            this.trail.material.color.set(this.isEnlarged ? 0x6699FF : 0xFF6666);
+            this.mesh.material.emissive.set(0x330000);
+            this.trail.material.color.set(0xFF6666);
             this.powerUpTimers.speed = null;
         }, 5000);
     }
@@ -454,8 +696,8 @@ class Ball {
         this.powerUpTimers.antiGravity = setTimeout(() => {
             this.isAntiGravity = false;
             this.body.gravity.set(0, -9.82, 0);
-            this.mesh.material.emissive.set(this.isEnlarged ? 0x001133 : 0x330000);
-            this.trail.material.color.set(this.isEnlarged ? 0x6699FF : 0xFF6666);
+            this.mesh.material.emissive.set(0x330000);
+            this.trail.material.color.set(0xFF6666);
             this.powerUpTimers.antiGravity = null;
         }, 5000);
     }
@@ -519,5 +761,32 @@ class Ball {
         
         // Call respawn to reset position and states
         this.respawn();
+    }
+    
+    /**
+     * Ensure the ball's physics integrity is maintained
+     * This fixes issues where physics properties might be lost during game state changes
+     */
+    ensurePhysicsIntegrity() {
+        // Ensure we always have proper physics
+        if (!this.body.linearDamping || this.body.linearDamping < 0.01) {
+            this.body.linearDamping = 0.08;
+        }
+        
+        if (!this.body.angularDamping || this.body.angularDamping < 0.01) {
+            this.body.angularDamping = 0.4;
+        }
+        
+        // If the ball is stuck or has invalid velocity, reset it
+        if (isNaN(this.body.velocity.x) || isNaN(this.body.velocity.y) || isNaN(this.body.velocity.z)) {
+            console.log("Fixed invalid ball velocity");
+            this.body.velocity.set(0, 0, 0);
+        }
+        
+        // If the ball somehow gets displaced very far away, reset it to last checkpoint
+        if (Math.abs(this.body.position.x) > 100 || Math.abs(this.body.position.y) > 100 || Math.abs(this.body.position.z) > 100) {
+            console.log("Ball out of bounds, resetting to checkpoint");
+            this.respawn();
+        }
     }
 }
