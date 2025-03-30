@@ -4,7 +4,7 @@ A modern web-based recreation of Nokia's classic Bounce game from 2001, using Th
 
 ## Project Overview
 
-This project aims to recreate the nostalgic Nokia Bounce game with modern web technologies. The original game was a platformer where players controlled a red ball through side-scrolling levels, navigating through hoops while avoiding obstacles like spikes and moving enemies.
+This project aims to recreate the nostalgic Nokia Bounce game with modern web technologies. The original game was a platformer where players controlled a red ball through side-scrolling levels, navigating through hoops while avoiding obstacles like spikes and moving enemies
 
 ## Features
 
