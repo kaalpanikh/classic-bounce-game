@@ -86,10 +86,6 @@ npm start
   - `ball.js` - Ball character implementation
   - `level.js` - Level creation and management
   - `ui.js` - User interface handling
-- `assets/` - Game assets
-  - `models/` - 3D models
-  - `textures/` - Texture files
-  - `sounds/` - Sound effects
 
 ## Deployment
 
