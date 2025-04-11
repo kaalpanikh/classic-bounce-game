@@ -1,4 +1,4 @@
-# Nokia Bounce Game Recreation
+# Bounce Game Recreation
 
 A modern web-based recreation of Nokia's classic Bounce game from 2001, using Three.js for 3D rendering and Cannon.js for physics simulation
 
